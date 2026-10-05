@@ -31,6 +31,9 @@ uint16_t leftwheel_current_position = 0;
 uint16_t rightwheel_current_position = 0;
 uint32_t last_scroll_time = 0;
 
+#define PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS 200
+static uint16_t drag_scroll_timer = 0;
+
 /* Layer lighting, used to blink when making gestures. */
 const rgblight_segment_t PROGMEM righty_nav_layer_colour[] =        RGBLIGHT_LAYER_SEGMENTS( {0, 2, HSV_NAVBLUE} );
 const rgblight_segment_t PROGMEM lefty_nav_layer_colour[] =         RGBLIGHT_LAYER_SEGMENTS( {0, 2, HSV_NAVGREEN} );
@@ -80,6 +83,8 @@ enum my_keycodes {
   PKC_TGL_DRAG_SCRL,
   PKC_GESTURE,
   PKC_DRAG_SCROLL,
+  PKC_DRAG_SCROLL_TAP_M4,
+  PKC_DRAG_SCROLL_TAP_M5,
   PKC_ADJUST_LED_BRIGHTNESS,
   PKC_BLINKY_DPI_CONFIG
 };
@@ -172,11 +177,11 @@ const uint16_t PROGMEM pointing_device_gestures[NUM_GESTURE_DIRECTIONS] =
 /* Keymap. */
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     // Base layer with all of the mouse-related stuff for everyday use.
-    [LAYER_NAV_RIGHT_HANDED] = LAYOUT(  MS_BTN4, MS_BTN5, PKC_DRAG_SCROLL, MS_BTN2, 
+    [LAYER_NAV_RIGHT_HANDED] = LAYOUT(  PKC_DRAG_SCROLL_TAP_M4, PKC_DRAG_SCROLL_TAP_M5, PKC_DRAG_SCROLL, MS_BTN2, 
                                         MS_BTN1, MS_BTN3, 
                                         PKC_GESTURE, TG(LAYER_CONTROL) ),
     // Mirror-image of right-handed layout for lefties.
-    [LAYER_NAV_LEFT_HANDED] = LAYOUT(   MS_BTN2, PKC_DRAG_SCROLL, MS_BTN4, MS_BTN5, 
+    [LAYER_NAV_LEFT_HANDED] = LAYOUT(   MS_BTN2, PKC_DRAG_SCROLL, PKC_DRAG_SCROLL_TAP_M4, PKC_DRAG_SCROLL_TAP_M5, 
                                         MS_BTN3, MS_BTN1, 
                                         TG(LAYER_CONTROL), PKC_GESTURE ),
     // Layer for all of the customization options.
@@ -307,6 +312,19 @@ void keyboard_post_init_user(void) {
     rgblight_sethsv(0, 0, RGBLIGHT_VAL_STEP * user_config.led_brightness);
 }  
 
+void _drag_scroll_tap(keyrecord_t* record, enum qk_keycode_defines keycode)
+{
+    is_drag_scroll = record->event.pressed;
+    /* On press start timer */
+    if (record->event.pressed) {
+        drag_scroll_timer = timer_read();
+    }
+    /* If released before PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS timeout then fire MS_BTN4 */
+    else if (timer_elapsed(drag_scroll_timer) < PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS) {
+        tap_code16(keycode);
+    }
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t* record) {
     switch (keycode) {
         case PKC_TGL_MIRROR:
@@ -395,6 +413,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
             else {
                 is_drag_scroll = record->event.pressed;
             }
+            return true;
+        case PKC_DRAG_SCROLL_TAP_M4:
+            _drag_scroll_tap(record, MS_BTN4);
+            return true;
+        case PKC_DRAG_SCROLL_TAP_M5:
+            _drag_scroll_tap(record, MS_BTN5);
             return true;
         case PKC_ADJUST_LED_BRIGHTNESS:
             /* Increase brightness in RGBLIGHT_VAL_STEP steps. 
