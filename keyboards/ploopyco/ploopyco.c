@@ -146,7 +146,7 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
         /* If high res scroll is enabled AND we are on Winows or Linux, update the resolution to something suitable */
         if ( (detected_host_os() == OS_WINDOWS || detected_host_os() == OS_LINUX) )
-            resolution = pointing_device_get_hires_scroll_resolution() * 4;
+            resolution = pointing_device_get_hires_scroll_resolution() * 2;
 #endif
         scroll_accumulated_h += ((float)mouse_report.x * resolution) / PLOOPY_DRAGSCROLL_DIVISOR_H;
         scroll_accumulated_v += ((float)mouse_report.y * resolution) / PLOOPY_DRAGSCROLL_DIVISOR_V;

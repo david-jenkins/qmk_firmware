@@ -558,7 +558,7 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
     /* If high res scroll is enabled AND we are on Winows or Linux, update the resolution to something suitable */
     if ( (detected_host_os() == OS_WINDOWS || detected_host_os() == OS_LINUX) )
-        resolution = pointing_device_get_hires_scroll_resolution() * 4;
+        resolution = pointing_device_get_hires_scroll_resolution() * 2;
 #endif
 
     /* If any delta is left after all that, trigger the scroll events */

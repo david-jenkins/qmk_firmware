@@ -27,7 +27,7 @@
 #define TMAG5273_MAX_SENSOR_VALUE 5760
 
 /* This value MUST be larger than 32 to function properly. */
-#define TMAG5273_WHEEL_DEADZONE 256
+#define TMAG5273_WHEEL_DEADZONE 64
 #if TMAG5273_WHEEL_DEADZONE < 32
     #error "TMAG5273_WHEEL_DEADZONE must be greater than 32."
 #endif
