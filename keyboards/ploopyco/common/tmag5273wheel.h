@@ -27,20 +27,18 @@
 #define TMAG5273_MAX_SENSOR_VALUE 5760
 
 /* This value MUST be larger than 32 to function properly. */
-#define TMAG5273_WHEEL_DEADZONE 128
+#define TMAG5273_WHEEL_DEADZONE 256
 #if TMAG5273_WHEEL_DEADZONE < 32
     #error "TMAG5273_WHEEL_DEADZONE must be greater than 32."
 #endif
-// The speed divisor decreases the speed. 1 is base speed; 2 is divided by 2,
-// 3 is divided by 3, and so forth. For best results, make sure that
-// TMAG5273_WHEEL_SPEED_DIV is an integer divisor of
-// TMAG5273_WHEEL_DEADZONE (i.e. 3 is an integer divisor of 12, but
-// 5 is not).
-#define TMAG5273_VERTICAL_WHEEL_SPEED_DIV 4
+/* The speed divisor decreases the speed.
+   This is a floating point value to divide the accumulated 
+   angle delta, the bigger it is, the slower you go. */
+#define TMAG5273_VERTICAL_WHEEL_SPEED_DIV 128.0
 
-/* Use different divisors for horizontal and vertical scrolls because they 
-   get used for different applications. */
-#define TMAG5273_HORIZONAL_WHEEL_SPEED_DIV 2
+/* Use different divisors for horizontal and vertical scrolls when they 
+   are used for different applications. */
+#define TMAG5273_HORIZONAL_WHEEL_SPEED_DIV 128.0
 
 /* This value determines how far apart scroll wheel "ticks" are when
    emulating low-res scrolling. Tick units are in fractions of 
@@ -100,6 +98,8 @@
 void tmag5273_init(void);
 void tmag5273_init_device(uint8_t);
 uint16_t tmag5273_get_angle(uint8_t);
+
+int16_t tmag5273_get_delta(uint8_t device_addr, uint16_t* wheel_deadzone_center);
 
 int16_t calculate_wheel_delta( uint16_t wheel_rawangle, uint16_t wheel_current_position );
 int16_t calculate_deadzone_distance( uint16_t wheel_rawangle, uint16_t* wheel_deadzone_center );

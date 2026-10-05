@@ -79,6 +79,27 @@ uint16_t tmag5273_get_angle(uint8_t device_addr) {
     return rawangle;
 }
 
+/* Calculate the delta position from the deadzone center. 
+   If the delta is greater than the deadzone limit, reset the deadzone
+   and return the value, else return 0. */
+int16_t tmag5273_get_delta(uint8_t device_addr, uint16_t* wheel_deadzone_center)
+{
+    uint16_t angle = tmag5273_get_angle(device_addr);
+    int16_t delta = (int16_t)angle - (int16_t)(*wheel_deadzone_center);
+    
+    if (delta < TMAG5273_WHEEL_DEADZONE && delta > -1 * TMAG5273_WHEEL_DEADZONE)
+        return 0;
+
+    if (delta > (TMAG5273_MAX_SENSOR_VALUE / 2)) {
+        delta -= TMAG5273_MAX_SENSOR_VALUE;
+    } else if (delta < -(TMAG5273_MAX_SENSOR_VALUE / 2)) {
+        delta += TMAG5273_MAX_SENSOR_VALUE;
+    }
+
+    *wheel_deadzone_center = angle;
+    return delta;
+}
+
 /* Calculate the distance between two wheel positions. Takes into account wraparound and the
    size of the wheel. Positive values are clockwise distances, negative values CCW. */
 int16_t calculate_wheel_delta( uint16_t wheel_newangle, uint16_t wheel_oldangle ) {
