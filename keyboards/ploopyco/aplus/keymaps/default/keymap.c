@@ -31,8 +31,8 @@ uint16_t leftwheel_current_position = 0;
 uint16_t rightwheel_current_position = 0;
 uint32_t last_scroll_time = 0;
 
-#define PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS 200
-static uint16_t drag_scroll_timer = 0;
+static uint16_t drag_hold_timer = 0;
+static uint16_t scroll_timer = 0;
 
 /* Layer lighting, used to blink when making gestures. */
 const rgblight_segment_t PROGMEM righty_nav_layer_colour[] =        RGBLIGHT_LAYER_SEGMENTS( {0, 2, HSV_NAVBLUE} );
@@ -317,10 +317,10 @@ void _drag_scroll_tap(keyrecord_t* record, enum qk_keycode_defines keycode)
     is_drag_scroll = record->event.pressed;
     /* On press start timer */
     if (record->event.pressed) {
-        drag_scroll_timer = timer_read();
+        drag_hold_timer = timer_read();
     }
     /* If released before PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS timeout then fire MS_BTN4 */
-    else if (timer_elapsed(drag_scroll_timer) < PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS) {
+    else if (timer_elapsed(drag_hold_timer) < PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS) {
         tap_code16(keycode);
     }
 }
@@ -463,6 +463,11 @@ int16_t vertical_arrow_scroll_tick = 0;
 int16_t volume_scroll_tick = 0;
 
 report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
+
+    if (timer_elapsed(scroll_timer) < PLOOPY_SCROLL_UPDATE_TICK_MS) {
+        return mouse_report;
+    }
+
     int16_t leftwheel_delta = tmag5273_get_delta(TMAG5273_D0_I2C_ADDRESS, &leftwheel_deadzone_center);
     int16_t rightwheel_delta = tmag5273_get_delta(TMAG5273_D1_I2C_ADDRESS, &rightwheel_deadzone_center);
 
@@ -482,6 +487,8 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
     if (leftwheel_delta == 0 && rightwheel_delta == 0) {
         return mouse_report;
     }
+
+    scroll_timer = timer_read();
 
     /* If we're on the control layers, both wheels adjust the volume. */
     if( layer_state_is(LAYER_CONTROL) ) {
@@ -558,26 +565,26 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
     /* If high res scroll is enabled AND we are on Winows or Linux, update the resolution to something suitable */
     if ( (detected_host_os() == OS_WINDOWS || detected_host_os() == OS_LINUX) )
-        resolution = pointing_device_get_hires_scroll_resolution() * 2;
+        resolution = pointing_device_get_hires_scroll_resolution() * PLOOPY_HD_WHEELSCROLL_SCALE;
 #endif
 
     /* If any delta is left after all that, trigger the scroll events */
     if (leftwheel_delta != 0) {
         leftwheel_accumulated += ((float)leftwheel_delta * resolution) / TMAG5273_VERTICAL_WHEEL_SPEED_DIV;
         if( user_config.left_handed )
-            mouse_report.h = (int32_t)leftwheel_accumulated;
+            mouse_report.h = (int16_t)leftwheel_accumulated;
         else
-            mouse_report.v = (int32_t)leftwheel_accumulated;
-        leftwheel_accumulated -= (int32_t)leftwheel_accumulated;
+            mouse_report.v = (int16_t)leftwheel_accumulated;
+        leftwheel_accumulated -= (int16_t)leftwheel_accumulated;
     }
 
     if (rightwheel_delta != 0) {
         rightwheel_accumulated += ((float)rightwheel_delta * resolution) / TMAG5273_HORIZONAL_WHEEL_SPEED_DIV;
         if( user_config.left_handed )
-            mouse_report.v = (int32_t)rightwheel_accumulated;
+            mouse_report.v = (int16_t)rightwheel_accumulated;
         else
-            mouse_report.h = (int32_t)rightwheel_accumulated;
-        rightwheel_accumulated -= (int32_t)rightwheel_accumulated;
+            mouse_report.h = (int16_t)rightwheel_accumulated;
+        rightwheel_accumulated -= (int16_t)rightwheel_accumulated;
     }
 
     return mouse_report;

@@ -78,3 +78,9 @@
 
 /* How long to blink for when an option-change button is pressed. */
 #define OPTION_CHANGE_BLINK_TIMEOUT 200 
+
+#define PLOOPY_SCROLL_UPDATE_TICK_MS 1
+#define PLOOPY_DRAGSCROLL_HOLD_THRESHOLD_MS 200
+
+#define PLOOPY_HD_DRAGSCROLL_SCALE 4
+#define PLOOPY_HD_WHEELSCROLL_SCALE 4
