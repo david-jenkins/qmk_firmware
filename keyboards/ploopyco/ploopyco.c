@@ -141,25 +141,29 @@ void cycle_dpi(void) {
 
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     if (is_drag_scroll) {
-        scroll_accumulated_h += (float)mouse_report.x / PLOOPY_DRAGSCROLL_DIVISOR_H;
-        scroll_accumulated_v += (float)mouse_report.y / PLOOPY_DRAGSCROLL_DIVISOR_V;
+        /* Default scroll resolution, e.g. when high res scroll is disabled or it's enabled and we are on macOS */
+        float resolution = 1;
+#ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
+        /* If high res scroll is enabled AND we are on Winows or Linux, update the resolution to something suitable */
+        if ( (detected_host_os() == OS_WINDOWS || detected_host_os() == OS_LINUX) )
+            resolution = pointing_device_get_hires_scroll_resolution() * 4;
+#endif
+        scroll_accumulated_h += ((float)mouse_report.x * resolution) / PLOOPY_DRAGSCROLL_DIVISOR_H;
+        scroll_accumulated_v += ((float)mouse_report.y * resolution) / PLOOPY_DRAGSCROLL_DIVISOR_V;
 
         // Assign integer parts of accumulated scroll values to the mouse report
-        mouse_report.h = (int8_t)scroll_accumulated_h;
+        mouse_report.h = (int32_t)scroll_accumulated_h;
 #ifdef PLOOPY_DRAGSCROLL_INVERT
-        mouse_report.v = -(int8_t)scroll_accumulated_v;
+        mouse_report.v = -(int32_t)scroll_accumulated_v;
 #else
-        mouse_report.v = (int8_t)scroll_accumulated_v;
+        mouse_report.v = (int32_t)scroll_accumulated_v;
 #endif
 
         // Update accumulated scroll values by subtracting the integer parts
-        scroll_accumulated_h -= (int8_t)scroll_accumulated_h;
-        scroll_accumulated_v -= (int8_t)scroll_accumulated_v;
+        scroll_accumulated_h -= (int32_t)scroll_accumulated_h;
+        scroll_accumulated_v -= (int32_t)scroll_accumulated_v;
 
         // Clear the X and Y values of the mouse report
-        mouse_report.x = 0;
-        mouse_report.y = 0;
-
         mouse_report.x = 0;
         mouse_report.y = 0;
     }
