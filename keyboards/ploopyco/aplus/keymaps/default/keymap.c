@@ -66,9 +66,9 @@ typedef union {
   uint32_t raw;
   struct {
     bool    left_handed :1;
-    bool    horizontal_scroll_arrows :1;
-    bool    vertical_scroll_arrows :1;
     bool    drag_scroll_mode :1;
+    uint8_t horizontal_scroll_type :2;
+    uint8_t vertical_scroll_type :2;
     uint8_t led_brightness: 8;
   };
 } user_config_t;
@@ -237,8 +237,8 @@ void eeconfig_init_user(void) {
     user_config.raw = 0;
 
     user_config.left_handed = false;                // Right-handed.
-    user_config.horizontal_scroll_arrows = false;   // False = Scroll events, True = left/right arrows.
-    user_config.vertical_scroll_arrows = false;     // False = Scroll events, True = up/down arrows.
+    user_config.horizontal_scroll_type = 0;         // 0 = left/right arrows, 1 = Continuous scroll, 2 = Discrete scroll.
+    user_config.vertical_scroll_type = 0;           // 0 = left/right arrows, 1 = Continuous scroll, 2 = Discrete scroll.
     user_config.drag_scroll_mode = false;           // Hold to activate.
     user_config.led_brightness = 4;                 // Brightest mode by default.
 
@@ -348,31 +348,40 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
             return true;
         case PKC_TGL_VERT_SCRL:
             if (record->event.pressed) {
-                user_config.vertical_scroll_arrows ^= 1;
+                user_config.vertical_scroll_type = (user_config.vertical_scroll_type+1) % 3;
                 eeconfig_update_user(user_config.raw);
 
-                if( user_config.vertical_scroll_arrows ) {
+                if( user_config.vertical_scroll_type == 0 ) {
                     rgblight_blink_layer(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT*2);
                     dprintf("Vert. scroll = arrows.\n");
                 }
-                else {
+                else if( user_config.vertical_scroll_type == 1 ) {
                     rgblight_blink_layer_repeat(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT, 2);
-                    dprintf("Vert. scroll = scroll events.\n");
+                    dprintf("Vert. scroll = continuous.\n");
+                }
+                else {
+                    rgblight_blink_layer_repeat(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT, 3);
+                    dprintf("Vert. scroll = discrete.\n");
                 }
             }
             return true;
         case PKC_TGL_HORIZ_SCRL:
             if (record->event.pressed) {
-                user_config.horizontal_scroll_arrows ^= 1;
+                user_config.horizontal_scroll_type = (user_config.horizontal_scroll_type+1) % 3;
                 eeconfig_update_user(user_config.raw);
 
-                if( user_config.horizontal_scroll_arrows ) {
+                if( user_config.horizontal_scroll_type == 0 ) {
                     rgblight_blink_layer(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT*2);
                     dprintf("Horiz. scroll = arrows.\n");
+                    
                 }
-                else {
+                else if ( user_config.horizontal_scroll_type == 1 ) {
                     rgblight_blink_layer_repeat(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT, 2);
-                    dprintf("Horiz. scroll = scroll events.\n");
+                    dprintf("Horiz. scroll = continuous.\n");
+                } 
+                else {
+                    rgblight_blink_layer_repeat(OPTION_CHANGED_LAYER_COLOUR, OPTION_CHANGE_BLINK_TIMEOUT, 3);
+                    dprintf("Horiz. scroll = discrete.\n");
                 }
             }
             return true;
@@ -454,11 +463,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t* record) {
 }
 
 /* State variables for the scroll events. */
-float leftwheel_accumulated = 0;
-float rightwheel_accumulated = 0;
-
-int16_t horizontal_arrow_scroll_tick = 0;
-int16_t vertical_arrow_scroll_tick = 0;
+float horizontal_accumulated = 0;
+float vertical_accumulated = 0;
 
 int16_t volume_scroll_tick = 0;
 
@@ -510,56 +516,6 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
         return mouse_report;
     }
 
-    /* If scroll arrow mode is activated for horizontal scrolling, then we do that. 
-        This behaviour is the same across OSes. */
-    if( user_config.horizontal_scroll_arrows ) {
-
-        if( user_config.left_handed ) {
-            horizontal_arrow_scroll_tick += leftwheel_delta;
-            /* Set the delta to zero so we don't scroll *and* arrow at the same time. */
-            leftwheel_delta = 0;
-        }
-        else {
-            horizontal_arrow_scroll_tick += rightwheel_delta;
-            /* Set the delta to zero so we don't scroll *and* arrow at the same time. */
-            rightwheel_delta = 0;
-        }
-
-        if( horizontal_arrow_scroll_tick > TMAG5273_HORIZ_SCROLL_TICK_SIZE ) {
-            tap_code(KC_RIGHT);
-            horizontal_arrow_scroll_tick = 0;
-        }
-        else if( horizontal_arrow_scroll_tick < -TMAG5273_HORIZ_SCROLL_TICK_SIZE ) {
-            tap_code(KC_LEFT);
-            horizontal_arrow_scroll_tick = 0;
-        }
-
-    }
-
-    /* If scroll arrow mode is activated for vertical scrolling, then we do that. 
-        This behaviour is the same across OSes. */
-    if( user_config.vertical_scroll_arrows ) {
-
-        if( user_config.left_handed ) {
-            vertical_arrow_scroll_tick += rightwheel_delta;
-            /* Set the delta to zero so we don't scroll *and* arrow at the same time. */
-            rightwheel_delta = 0;
-        }
-        else {
-            vertical_arrow_scroll_tick += leftwheel_delta;
-            /* Set the delta to zero so we don't scroll *and* arrow at the same time. */
-            leftwheel_delta = 0;
-        }
-        if( vertical_arrow_scroll_tick > TMAG5273_VERT_SCROLL_TICK_SIZE ) {
-            tap_code(KC_DOWN);
-            vertical_arrow_scroll_tick = 0;
-        }
-        else if( vertical_arrow_scroll_tick < -TMAG5273_VERT_SCROLL_TICK_SIZE ) {
-            tap_code(KC_UP);
-            vertical_arrow_scroll_tick = 0;
-        }
-    }
-
     /* Default scroll resolution, e.g. when high res scroll is disabled or it's enabled and we are on macOS */
     float resolution = 1;
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE
@@ -568,23 +524,112 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
         resolution = pointing_device_get_hires_scroll_resolution() * PLOOPY_HD_WHEELSCROLL_SCALE;
 #endif
 
-    /* If any delta is left after all that, trigger the scroll events */
-    if (leftwheel_delta != 0) {
-        leftwheel_accumulated += ((float)leftwheel_delta * resolution) / TMAG5273_VERTICAL_WHEEL_SPEED_DIV;
-        if( user_config.left_handed )
-            mouse_report.h = (int16_t)leftwheel_accumulated;
-        else
-            mouse_report.v = (int16_t)leftwheel_accumulated;
-        leftwheel_accumulated -= (int16_t)leftwheel_accumulated;
+    /* Choose what to do based on which horizontal scroll option is selected */
+    switch (user_config.horizontal_scroll_type) {
+        /* This is normal high resolution scroll */
+        case 0:
+
+            if( user_config.left_handed )
+                horizontal_accumulated += ((float)leftwheel_delta * resolution) / TMAG5273_HORIZONAL_WHEEL_SPEED_DIV;
+            else
+                horizontal_accumulated += ((float)rightwheel_delta * resolution) / TMAG5273_HORIZONAL_WHEEL_SPEED_DIV;
+
+            if (horizontal_accumulated > 1 || horizontal_accumulated < - 1) {
+                mouse_report.h = (int16_t)horizontal_accumulated;
+                horizontal_accumulated -= (int16_t)horizontal_accumulated;
+            }
+
+            break;
+        /* This is left/right arrow mode */
+        case 1:
+
+            if( user_config.left_handed )
+                horizontal_accumulated += leftwheel_delta;
+            else
+                horizontal_accumulated += rightwheel_delta;
+
+            if( horizontal_accumulated > TMAG5273_HORIZ_SCROLL_TICK_SIZE ) {
+                tap_code(KC_RIGHT);
+                horizontal_accumulated = 0;
+            }
+            else if( horizontal_accumulated < -TMAG5273_HORIZ_SCROLL_TICK_SIZE ) {
+                tap_code(KC_LEFT);
+                horizontal_accumulated = 0;
+            }
+
+            break;
+        /* This is discrete scroll events */
+        case 2:
+
+            if( user_config.left_handed )
+                horizontal_accumulated += (float)leftwheel_delta;
+            else
+                horizontal_accumulated += (float)rightwheel_delta;
+
+            if (horizontal_accumulated > TMAG5273_LOWRES_TICK_SIZE) {
+                mouse_report.h = resolution;
+                horizontal_accumulated = 0;
+            }
+            else if (horizontal_accumulated < -1 * TMAG5273_LOWRES_TICK_SIZE) {
+                mouse_report.h = -1 * resolution;
+                horizontal_accumulated = 0;
+            }
+
+            break;
     }
 
-    if (rightwheel_delta != 0) {
-        rightwheel_accumulated += ((float)rightwheel_delta * resolution) / TMAG5273_HORIZONAL_WHEEL_SPEED_DIV;
-        if( user_config.left_handed )
-            mouse_report.v = (int16_t)rightwheel_accumulated;
-        else
-            mouse_report.h = (int16_t)rightwheel_accumulated;
-        rightwheel_accumulated -= (int16_t)rightwheel_accumulated;
+    /* Choose what to do based on which horizontal scroll option is selected */
+    switch (user_config.vertical_scroll_type) {
+        /* This is normal high resolution scroll */
+        case 0:
+
+            if( user_config.left_handed )
+                vertical_accumulated += ((float)rightwheel_delta * resolution) / TMAG5273_VERTICAL_WHEEL_SPEED_DIV;
+            else
+                vertical_accumulated += ((float)leftwheel_delta * resolution) / TMAG5273_VERTICAL_WHEEL_SPEED_DIV;
+
+            if (vertical_accumulated > 1 || vertical_accumulated < - 1) {
+                mouse_report.v = (int16_t)vertical_accumulated;
+                vertical_accumulated -= (int16_t)vertical_accumulated;
+            }
+
+            break;
+        /* This is up/down arrow mode */
+        case 1:
+
+            if( user_config.left_handed )
+                vertical_accumulated += rightwheel_delta;
+            else
+                vertical_accumulated += leftwheel_delta;
+
+            if( vertical_accumulated > TMAG5273_VERT_SCROLL_TICK_SIZE ) {
+                tap_code(KC_DOWN);
+                vertical_accumulated = 0;
+            }
+            else if( vertical_accumulated < -TMAG5273_VERT_SCROLL_TICK_SIZE ) {
+                tap_code(KC_UP);
+                vertical_accumulated = 0;
+            }
+
+            break;
+        /* This is discrete scroll events */
+        case 2:
+
+            if( user_config.left_handed )
+                vertical_accumulated += rightwheel_delta;
+            else
+                vertical_accumulated += leftwheel_delta;
+
+            if (vertical_accumulated > TMAG5273_LOWRES_TICK_SIZE) {
+                mouse_report.v = resolution;
+                vertical_accumulated = 0;
+            }
+            else if (vertical_accumulated < -1 * TMAG5273_LOWRES_TICK_SIZE) {
+                mouse_report.v = -1 * resolution;
+                vertical_accumulated = 0;
+            }
+
+            break;
     }
 
     return mouse_report;
