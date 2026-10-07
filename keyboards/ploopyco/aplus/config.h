@@ -40,8 +40,8 @@
 //#define POINTING_DEVICE_ACCEL_LIMIT 0.2        // lower limit of accel curve (minimum acceleration factor)
 
 #define PLOOPY_DRAGSCROLL_MOMENTARY
-#define PLOOPY_DRAGSCROLL_DIVISOR_H 24.0
-#define PLOOPY_DRAGSCROLL_DIVISOR_V 16.0
+#define PLOOPY_DRAGSCROLL_DIVISOR_H 32.0
+#define PLOOPY_DRAGSCROLL_DIVISOR_V 24.0
 #define PLOOPY_DRAGSCROLL_INVERT
 
 /* PMW3360 Settings */
