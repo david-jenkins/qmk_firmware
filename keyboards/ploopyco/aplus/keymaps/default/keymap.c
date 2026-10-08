@@ -472,6 +472,11 @@ report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
 
     if (timer_elapsed(scroll_timer) < PLOOPY_SCROLL_UPDATE_TICK_MS) {
         return mouse_report;
+    } /** If the a scroll event hasn't triggered before PLOOPY_SCROLL_RESET_ACCUMULATE_MS then
+          reset the accumulators, better emulates a discrete scroll wheel. */
+    else if (timer_elapsed(scroll_timer) > PLOOPY_SCROLL_RESET_ACCUMULATE_MS) {
+        vertical_accumulated = 0;
+        horizontal_accumulated = 0;
     }
 
     int16_t leftwheel_delta = tmag5273_get_delta(TMAG5273_D0_I2C_ADDRESS, &leftwheel_deadzone_center);
