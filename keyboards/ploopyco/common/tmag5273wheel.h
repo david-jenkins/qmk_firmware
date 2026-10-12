@@ -34,11 +34,11 @@
 /* The speed divisor decreases the speed.
    This is a floating point value to divide the accumulated 
    angle delta, the bigger it is, the slower you go. */
-#define TMAG5273_VERTICAL_WHEEL_SPEED_DIV 176.0
+#define TMAG5273_VERTICAL_WHEEL_SPEED_DIV 208.0
 
 /* Use different divisors for horizontal and vertical scrolls when they 
    are used for different applications. */
-#define TMAG5273_HORIZONAL_WHEEL_SPEED_DIV 176.0
+#define TMAG5273_HORIZONAL_WHEEL_SPEED_DIV 208.0
 
 /* This value determines how far apart scroll wheel "ticks" are when
    emulating low-res scrolling. Tick units are in fractions of 
