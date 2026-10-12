@@ -160,17 +160,19 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         }
         scroll_timer = timer_read();
 
+        const int16_t scroll_h = scroll_accumulated_h;
+        const int16_t scroll_v = scroll_accumulated_v;
         // Assign integer parts of accumulated scroll values to the mouse report
-        mouse_report.h = (int16_t)scroll_accumulated_h;
+        mouse_report.h = scroll_h;
 #ifdef PLOOPY_DRAGSCROLL_INVERT
-        mouse_report.v = -(int16_t)scroll_accumulated_v;
+        mouse_report.v = -scroll_v;
 #else
-        mouse_report.v = (int16_t)scroll_accumulated_v;
+        mouse_report.v = scroll_v;
 #endif
 
         // Update accumulated scroll values by subtracting the integer parts
-        scroll_accumulated_h -= (int16_t)scroll_accumulated_h;
-        scroll_accumulated_v -= (int16_t)scroll_accumulated_v;
+        scroll_accumulated_h -= scroll_h;
+        scroll_accumulated_v -= scroll_v;
 
     }
 
